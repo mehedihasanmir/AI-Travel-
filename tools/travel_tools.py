@@ -164,6 +164,68 @@ def google_places_search(query: str, location: str = None):
 
 
 @tool
+def duckduckgo_web_search(query: str, max_results: int = 5):
+    """
+    Search the web using DuckDuckGo Instant Answer API.
+    Useful for broad travel questions that are not tied to a single provider.
+    """
+    url = "https://api.duckduckgo.com/"
+    params = {
+        "q": query,
+        "format": "json",
+        "no_html": "1",
+        "skip_disambig": "1",
+        "no_redirect": "1",
+    }
+
+    try:
+        response = requests.get(url, params=params, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+        data = response.json()
+
+        lines = [f"DuckDuckGo results for '{query}':"]
+        added = 0
+
+        abstract_text = data.get("AbstractText")
+        abstract_url = data.get("AbstractURL")
+        if abstract_text:
+            if abstract_url:
+                lines.append(f"- {abstract_text} ({abstract_url})")
+            else:
+                lines.append(f"- {abstract_text}")
+            added += 1
+
+        related_topics = data.get("RelatedTopics", [])
+        for topic in related_topics:
+            if added >= max_results:
+                break
+
+            if "Topics" in topic:
+                for nested in topic.get("Topics", []):
+                    if added >= max_results:
+                        break
+                    text = nested.get("Text")
+                    link = nested.get("FirstURL")
+                    if text:
+                        lines.append(f"- {text} ({link})" if link else f"- {text}")
+                        added += 1
+            else:
+                text = topic.get("Text")
+                link = topic.get("FirstURL")
+                if text:
+                    lines.append(f"- {text} ({link})" if link else f"- {text}")
+                    added += 1
+
+        if added == 0:
+            fallback = data.get("Heading") or "No strong instant-answer results found. Try a more specific search query."
+            lines.append(f"- {fallback}")
+
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Error searching DuckDuckGo: {e}"
+
+
+@tool
 def get_map_view(location: str, zoom: int = 14):
     """
     Generate a Google Maps Static API URL for a location.
@@ -365,6 +427,7 @@ def generate_trip_plan(destination: str, duration_days: int):
 TRAVEL_TOOLS = [
     check_weather,
     google_places_search,
+    duckduckgo_web_search,
     get_map_view,
     find_hotels,
     get_destination_photo,

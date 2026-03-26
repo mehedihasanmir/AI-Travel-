@@ -4,7 +4,7 @@ import sys
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse
 from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
@@ -55,13 +55,22 @@ def chat_agent(prompt: str, session_id: str) -> dict:
 
         response_text = final_message.content.strip()
 
+        # Card output: JSON trip plan wrapped in markdown code block
         if response_text.startswith("```json"):
             try:
                 json_str = response_text.replace("```json", "").replace("```", "").strip()
                 json_data = json.loads(json_str)
-                return {"type": "json", "data": json_data}
+                return {"type": "card", "data": json_data}
             except json.JSONDecodeError:
                 return {"type": "text", "data": response_text}
+
+        # Card output: raw JSON content (without markdown wrapper)
+        if response_text.startswith("{") and response_text.endswith("}"):
+            try:
+                json_data = json.loads(response_text)
+                return {"type": "card", "data": json_data}
+            except json.JSONDecodeError:
+                pass
 
         return {"type": "text", "data": response_text}
 
@@ -91,11 +100,7 @@ async def health_check():
 async def chat(request: ChatRequest):
     try:
         result = chat_agent(request.prompt, request.session_id)
-
-        if result["type"] == "json":
-            return JSONResponse(content=result["data"], status_code=200)
-
-        return PlainTextResponse(content=result["data"], status_code=200)
+        return JSONResponse(content=result, status_code=200)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing chat request: {str(e)}")
