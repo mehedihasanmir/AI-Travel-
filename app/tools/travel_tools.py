@@ -7,7 +7,7 @@ import requests
 from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
-from config import (
+from app.core.config import (
     AMADEUS_CLIENT_ID,
     AMADEUS_CLIENT_SECRET,
     GOOGLE_API_KEY,
@@ -15,7 +15,7 @@ from config import (
     UNSPLASH_ACCESS_KEY,
     interpret_weather_code,
 )
-from trip_models import TripPlan
+from app.models.trip_models import TripPlan
 
 
 def fetch_unsplash_image(query: str) -> str:
@@ -66,56 +66,75 @@ def get_amadeus_token():
 @tool
 def check_weather(city: str):
     """
-    Fetch detailed weather forecast for a specific city.
+    Fetch a minimal 5-day weather forecast for a specific city.
     """
-    geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json"
+    city_name = (city or "").strip()
+    if not city_name:
+        return "Please provide a city name for weather lookup."
+
+    geo_url = "https://geocoding-api.open-meteo.com/v1/search"
+    geo_params = {
+        "name": city_name,
+        "count": 1,
+        "language": "en",
+        "format": "json",
+    }
 
     try:
-        geo_res = requests.get(geo_url, timeout=REQUEST_TIMEOUT).json()
+        geo_response = requests.get(geo_url, params=geo_params, timeout=REQUEST_TIMEOUT)
+        geo_response.raise_for_status()
+        geo_res = geo_response.json()
+
         if not geo_res.get("results"):
-            return f"Could not find coordinates for {city}."
+            return f"Could not find coordinates for {city_name}."
 
         location = geo_res["results"][0]
         lat, lon = location["latitude"], location["longitude"]
+        resolved_name = location.get("name") or city_name
+        country = location.get("country", "")
+        display_name = f"{resolved_name}, {country}".strip(", ")
 
         weather_url = "https://api.open-meteo.com/v1/forecast"
         params = {
             "latitude": lat,
             "longitude": lon,
-            "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,weathercode,windspeed_10m_max,humidity_2m_max",
+            "daily": "temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code",
             "timezone": "auto",
             "temperature_unit": "celsius",
         }
 
-        w_res = requests.get(weather_url, params=params, timeout=REQUEST_TIMEOUT).json()
+        weather_response = requests.get(weather_url, params=params, timeout=REQUEST_TIMEOUT)
+        weather_response.raise_for_status()
+        w_res = weather_response.json()
 
         daily = w_res.get("daily", {})
         times = daily.get("time", [])
         temps_max = daily.get("temperature_2m_max", [])
         temps_min = daily.get("temperature_2m_min", [])
         rain_probs = daily.get("precipitation_probability_max", [])
-        rain_amounts = daily.get("precipitation_sum", [])
-        wind_speeds = daily.get("windspeed_10m_max", [])
-        humidity = daily.get("humidity_2m_max", [])
-        weather_codes = daily.get("weathercode", [])
+        weather_codes = daily.get("weather_code", []) or daily.get("weathercode", [])
 
-        forecast_report = f"🌍 Detailed Weather Forecast for {city}:\n\n"
+        if not times:
+            return f"Weather data is unavailable right now for {display_name}. Please try again shortly."
+
+        def get_at(values, idx, default="N/A"):
+            return values[idx] if idx < len(values) else default
+
+        forecast_report = f"Weather forecast for {display_name} (next 5 days):\n\n"
         for i in range(min(5, len(times))):
-            weather_desc = interpret_weather_code(weather_codes[i]) if i < len(weather_codes) else "Unknown"
-            forecast_report += f"📅 {times[i]}:\n"
-            forecast_report += f"  🌡️ Temperature: {temps_max[i]}°C (min: {temps_min[i]}°C)\n"
-            forecast_report += f"  💧 Humidity: {humidity[i] if i < len(humidity) else 'N/A'}%\n"
-            forecast_report += f"  💨 Wind Speed: {wind_speeds[i] if i < len(wind_speeds) else 'N/A'} km/h\n"
-            forecast_report += f"  🌧️ Rain Probability: {rain_probs[i]}%\n"
-            forecast_report += f"  📏 Rainfall: {rain_amounts[i] if i < len(rain_amounts) else 'N/A'} mm\n"
-            forecast_report += f"  {weather_desc}\n"
+            weather_code = get_at(weather_codes, i)
+            weather_desc = interpret_weather_code(weather_code) if weather_code != "N/A" else "Unknown"
 
-            if weather_codes[i] in [95, 96, 99]:
-                forecast_report += "  ⚠️ WARNING: Severe thunderstorm expected! Not recommended for outdoor activities.\n"
-            elif rain_probs[i] > 80:
-                forecast_report += "  ⚠️ WARNING: High chance of heavy rain. Plan indoor activities.\n"
-            elif (wind_speeds[i] > 40) if i < len(wind_speeds) else False:
-                forecast_report += "  ⚠️ WARNING: Strong winds expected. Be cautious with outdoor plans.\n"
+            temp_max = get_at(temps_max, i)
+            temp_min = get_at(temps_min, i)
+            rain_prob = get_at(rain_probs, i)
+
+            forecast_report += f"- {times[i]}: {weather_desc}, {temp_min}°C to {temp_max}°C, Rain chance {rain_prob}%\n"
+
+            if weather_code in [95, 96, 99]:
+                forecast_report += "  Warning: Thunderstorm expected.\n"
+            elif isinstance(rain_prob, (int, float)) and rain_prob > 80:
+                forecast_report += "  Warning: High chance of heavy rain.\n"
 
             forecast_report += "\n"
 

@@ -1,0 +1,58 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Travel Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <main class="app">
+    <aside class="session-sidebar">
+      <div class="session-head">
+        <div class="session-head-top">
+          <h3 class="session-title">Sessions</h3>
+          <span id="syncIndicator" class="sync-indicator saved">Saved</span>
+        </div>
+        <button id="newSession" type="button" class="session-new">+ New Session</button>
+      </div>
+      <ul id="sessionList" class="session-list"></ul>
+    </aside>
+
+    <section class="main-pane">
+      <header class="topbar">
+        <div class="brand">AI Travel Agent Chat</div>
+        <div class="controls">
+          <input id="apiBase" value="" aria-label="API base URL" />
+          <input id="sessionId" value="user-session-1" aria-label="Session ID" />
+        </div>
+      </header>
+
+      <section id="chat" class="chat"></section>
+
+      <form id="chatForm" class="composer">
+        <textarea id="prompt" rows="1" placeholder="Write your travel question..." autocomplete="off"></textarea>
+        <button id="sendBtn" class="send-btn" type="submit">Send</button>
+      </form>
+      <div class="composer-hint">Press Enter to send, Shift+Enter for new line</div>
+      <div id="status" class="status"></div>
+    </section>
+  </main>
+
+  <div id="detailsModalOverlay" class="details-modal-overlay" role="dialog" aria-modal="true">
+    <section class="details-modal">
+      <div class="details-modal-head">
+        <h3 id="detailsModalTitle" class="details-modal-title">Trip Details</h3>
+        <button id="detailsModalClose" type="button" class="details-close">Close</button>
+      </div>
+      <div id="detailsModalBody"></div>
+    </section>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
+

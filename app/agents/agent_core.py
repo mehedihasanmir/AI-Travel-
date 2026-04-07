@@ -7,7 +7,7 @@ from langgraph.graph import START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
-from tools import TRAVEL_TOOLS
+from app.tools import TRAVEL_TOOLS
 
 llm = ChatOpenAI(model="gpt-4.1", temperature=0.5)
 llm_with_tools = llm.bind_tools(TRAVEL_TOOLS)
@@ -21,6 +21,7 @@ sys_msg = SystemMessage(
     content=(
         "You are an expert AI Travel Agent. Your goal is to help users plan amazing trips by "
         "checking weather, finding hotels, discovering local spots, searching the web, and providing map views. "
+        "If the user asks about weather, temperature, rain, forecast, or climate for a place, you must call check_weather first and use that tool result. "
         "If the user asks for a trip plan, hitlist, itinerary getaway, or itinerary, you must use "
         "the generate_trip_plan tool. When generate_trip_plan returns JSON, output that exact JSON "
         "as your final response (optionally in a json code block), and do not summarize it. "
