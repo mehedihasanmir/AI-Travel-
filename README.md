@@ -29,6 +29,7 @@ This project is backend-first and includes:
 - Environment Variables
 - Installation
 - Running the Server
+- Demo
 - API Endpoints
 - How to Use (User Flow)
 - Development Notes
@@ -182,6 +183,20 @@ After startup:
 - Docs: `http://127.0.0.1:8000/docs`
 - UI: `http://127.0.0.1:8000/ui`
 
+## Demo
+
+Video walkthrough:
+
+- [Watch Demo Video (Google Drive)](https://drive.google.com/file/d/12fH3g2mtb-uuYG3qATlpTMKOOporgojd/view?usp=sharing)
+
+Demo screenshots:
+
+![Demo Screenshot 1](demo/Screenshot%202026-04-14%20171659.png)
+![Demo Screenshot 2](demo/Screenshot%202026-04-14%20182859.png)
+![Demo Screenshot 3](demo/Screenshot%202026-04-14%20183017.png)
+![Demo Screenshot 4](demo/Screenshot%202026-04-14%20183044.png)
+![Demo Screenshot 5](demo/Screenshot%202026-04-14%20183059.png)
+
 ## API Endpoints
 
 ### Keep Endpoints
@@ -269,3 +284,22 @@ Reinstall dependencies:
 ```bash
 pip install -r requirements.txt
 ```
+
+## Important Notes
+
+- This project is designed with a backend-first architecture and real-time SSE streaming for AI responses.
+- Memory and session features are available even when PostgreSQL is not configured (graceful fallback mode).
+- For production use, configure strict CORS, HTTPS, and secure environment variable management.
+
+## Future Improvements
+
+- Add user authentication and role-based access control for secure multi-user usage.
+- Introduce caching and rate limiting to improve performance and API reliability.
+- Expand travel intelligence with flight fare tracking and budget optimization suggestions.
+- Add automated tests and CI pipeline for better code quality and release confidence.
+- Containerize deployment with Docker and add production-ready monitoring/logging.
+
+## Connect with Me
+
+- GitHub: [mehedihasanmir](https://github.com/mehedihasanmir)
+- LinkedIn: [LinkedIn](https://www.linkedin.com/in/mehedi-hasan-mir/)
