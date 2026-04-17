@@ -33,12 +33,24 @@
 
       <section id="chat" class="chat"></section>
 
+      <section class="thinking-dock">
+        <button id="traceToggleBtn" type="button" class="thinking-toggle-btn" aria-expanded="false">
+          <span class="thinking-star" aria-hidden="true">✦</span>
+          <span id="traceToggleLabel">Show thinking</span>
+          <span class="thinking-caret" aria-hidden="true">⌃</span>
+        </button>
+        <span id="status" class="status-inline"></span>
+      </section>
+
+      <section id="tracePanel" class="trace-panel" aria-live="polite">
+        <div id="tracePanelBody" class="trace-panel-body"></div>
+      </section>
+
       <form id="chatForm" class="composer">
         <textarea id="prompt" rows="1" placeholder="Write your travel question..." autocomplete="off"></textarea>
         <button id="sendBtn" class="send-btn" type="submit">Send</button>
       </form>
       <div class="composer-hint">Press Enter to send, Shift+Enter for new line</div>
-      <div id="status" class="status"></div>
     </section>
   </main>
 

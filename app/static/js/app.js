@@ -8,6 +8,10 @@
     const newSessionEl = document.getElementById("newSession");
     const syncIndicatorEl = document.getElementById("syncIndicator");
     const statusEl = document.getElementById("status");
+    const traceToggleBtnEl = document.getElementById("traceToggleBtn");
+    const traceToggleLabelEl = document.getElementById("traceToggleLabel");
+    const tracePanelEl = document.getElementById("tracePanel");
+    const tracePanelBodyEl = document.getElementById("tracePanelBody");
     const detailsModalOverlayEl = document.getElementById("detailsModalOverlay");
     const detailsModalBodyEl = document.getElementById("detailsModalBody");
     const detailsModalTitleEl = document.getElementById("detailsModalTitle");
@@ -15,6 +19,13 @@
     let activeSessionId = sessionIdEl.value.trim() || "user-session-1";
     let sessionCache = [];
     let sessionSyncState = "saved";
+    let showTraceDetails = false;
+    let traceState = {
+      thoughtText: "",
+      toolEvents: [],
+      toolNames: new Set(),
+      toolCompleted: 0,
+    };
     const LOCAL_SESSION_TITLES_KEY = "ai-travel-session-titles";
 
     // Use same origin only when page is served by FastAPI UI route.
@@ -30,6 +41,65 @@
 
     function setStatus(text) {
       statusEl.textContent = text || "";
+    }
+
+    function setTraceVisibility(isOpen) {
+      showTraceDetails = Boolean(isOpen);
+      tracePanelEl.classList.toggle("open", showTraceDetails);
+      traceToggleBtnEl.classList.toggle("open", showTraceDetails);
+      traceToggleBtnEl.setAttribute("aria-expanded", showTraceDetails ? "true" : "false");
+      traceToggleLabelEl.textContent = showTraceDetails ? "Hide thinking" : "Show thinking";
+      if (showTraceDetails) {
+        renderTracePanel();
+      }
+    }
+
+    function resetTraceState() {
+      traceState = {
+        thoughtText: "",
+        toolEvents: [],
+        toolNames: new Set(),
+        toolCompleted: 0,
+      };
+      updateTraceSummary();
+      renderTracePanel();
+    }
+
+    function updateTraceSummary() {
+      const thoughtReady = traceState.thoughtText.trim().length > 0;
+      const toolCount = traceState.toolNames.size;
+
+      if (!thoughtReady && toolCount === 0) {
+        traceToggleBtnEl.title = "No reasoning log yet.";
+        return;
+      }
+
+      const thoughtPart = thoughtReady ? "Thoughts captured" : "No thought text";
+      const toolPart = `${toolCount} tool${toolCount === 1 ? "" : "s"} used`;
+      const donePart = `${traceState.toolCompleted} completed`;
+      traceToggleBtnEl.title = `${thoughtPart}. ${toolPart}, ${donePart}.`;
+    }
+
+    function renderTracePanel() {
+      tracePanelBodyEl.innerHTML = "";
+      if (!showTraceDetails) return;
+
+      if (traceState.thoughtText.trim()) {
+        const thoughtBlock = document.createElement("article");
+        thoughtBlock.className = "trace-thought";
+        const heading = document.createElement("h4");
+        heading.textContent = "Model thinking";
+        const content = document.createElement("pre");
+        content.className = "trace-thought-text";
+        content.textContent = traceState.thoughtText;
+        thoughtBlock.appendChild(heading);
+        thoughtBlock.appendChild(content);
+        tracePanelBodyEl.appendChild(thoughtBlock);
+      }
+
+      traceState.toolEvents.forEach((entry, index) => {
+        addToolTraceBubble(entry.content || {}, entry.meta || {}, index + 1, tracePanelBodyEl, false);
+      });
     }
 
     function createSessionId() {
@@ -415,6 +485,135 @@
       scrollToBottom();
     }
 
+    function stringifyForPreview(value, maxLen = 1400) {
+      if (value === null || value === undefined) return "";
+      let text = "";
+
+      if (typeof value === "string") {
+        text = value;
+      } else {
+        try {
+          text = JSON.stringify(value, null, 2);
+        } catch (err) {
+          text = String(value);
+        }
+      }
+
+      if (text.length <= maxLen) return text;
+      return text.slice(0, maxLen) + "\n... [truncated]";
+    }
+
+    function addToolTraceBubble(payload, meta, stepNumber, parentEl = chatEl, shouldScroll = true) {
+      const content = payload && typeof payload === "object" ? payload : {};
+      const eventMeta = meta && typeof meta === "object" ? meta : {};
+      const phase = String(content.phase || "event").toLowerCase();
+      const toolName = String(content.name || "tool");
+      const reason = String(content.reason || "").trim();
+      const summary = String(content.summary || "").trim();
+      const sources = Array.isArray(content.sources) ? content.sources : [];
+      const stepLabel = Number.isFinite(stepNumber) && stepNumber > 0 ? `Step ${stepNumber}` : "Step";
+
+      const bubble = document.createElement("article");
+      bubble.className = "bubble agent rich tool-trace";
+
+      const topRow = document.createElement("div");
+      topRow.className = "tool-head-row";
+      const stepTag = document.createElement("span");
+      stepTag.className = "tool-step-tag";
+      stepTag.textContent = stepLabel;
+      const statusTag = document.createElement("span");
+      statusTag.className = "tool-status-tag " + (phase === "end" ? "end" : "start");
+      statusTag.textContent = phase === "end" ? "completed" : phase === "start" ? "running" : phase;
+      topRow.appendChild(stepTag);
+      topRow.appendChild(statusTag);
+      bubble.appendChild(topRow);
+
+      const title = document.createElement("h4");
+      title.textContent = phase === "start"
+        ? `Tool start: ${toolName}`
+        : phase === "end"
+          ? `Tool done: ${toolName}`
+          : `Tool event: ${toolName}`;
+      bubble.appendChild(title);
+
+      if (reason) {
+        const reasonNode = document.createElement("p");
+        reasonNode.className = "tool-reason";
+        reasonNode.textContent = reason;
+        bubble.appendChild(reasonNode);
+      }
+
+      if (summary) {
+        const summaryNode = document.createElement("p");
+        summaryNode.className = "tool-summary";
+        summaryNode.textContent = summary;
+        bubble.appendChild(summaryNode);
+      }
+
+      if (sources.length) {
+        const sourceWrap = document.createElement("div");
+        sourceWrap.className = "tool-sources";
+
+        const label = document.createElement("span");
+        label.className = "tool-sources-label";
+        label.textContent = "Data sources:";
+        sourceWrap.appendChild(label);
+
+        const chips = document.createElement("div");
+        chips.className = "tool-source-chips";
+        sources.forEach((src) => {
+          const chip = document.createElement("span");
+          chip.className = "tool-source-chip";
+          chip.textContent = String(src);
+          chips.appendChild(chip);
+        });
+        sourceWrap.appendChild(chips);
+        bubble.appendChild(sourceWrap);
+      }
+
+      if (content.input !== undefined) {
+        const inputBlock = document.createElement("details");
+        const inputSummary = document.createElement("summary");
+        inputSummary.textContent = "Tool input";
+        const inputPre = document.createElement("pre");
+        inputPre.className = "tool-json";
+        inputPre.textContent = stringifyForPreview(content.input);
+        inputBlock.appendChild(inputSummary);
+        inputBlock.appendChild(inputPre);
+        bubble.appendChild(inputBlock);
+      }
+
+      if (content.output !== undefined) {
+        const outputBlock = document.createElement("details");
+        if (phase === "end") {
+          outputBlock.open = true;
+        }
+        const outputSummary = document.createElement("summary");
+        outputSummary.textContent = "Tool output";
+        const outputPre = document.createElement("pre");
+        outputPre.className = "tool-json";
+        outputPre.textContent = stringifyForPreview(content.output);
+        outputBlock.appendChild(outputSummary);
+        outputBlock.appendChild(outputPre);
+        bubble.appendChild(outputBlock);
+      }
+
+      if (eventMeta.run_id || eventMeta.event) {
+        const metaNode = document.createElement("p");
+        metaNode.className = "tool-meta-line";
+        const rawEvent = String(eventMeta.event || "").replace(/^on_/, "");
+        metaNode.textContent = rawEvent
+          ? `Event: ${rawEvent}`
+          : "";
+        bubble.appendChild(metaNode);
+      }
+
+      parentEl.appendChild(bubble);
+      if (shouldScroll) {
+        scrollToBottom();
+      }
+    }
+
     function escapeHtml(text) {
       return text
         .replace(/&/g, "&amp;")
@@ -427,7 +626,21 @@
     function formatInline(text) {
       return text
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-        .replace(/`([^`]+)`/g, "<code>$1</code>");
+        .replace(/`([^`]+)`/g, "<code>$1</code>")
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    }
+
+    function renderMarkdownImage(line) {
+      const m = String(line || "").match(/^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/i);
+      if (!m) return "";
+      const alt = m[1] || "Image";
+      const src = m[2];
+      return `
+        <figure class="md-inline-image">
+          <img src="${src}" alt="${alt}" loading="lazy" referrerpolicy="no-referrer" />
+          <figcaption>${alt}</figcaption>
+        </figure>
+      `;
     }
 
     function markdownToSafeHtml(text) {
@@ -452,6 +665,13 @@
         const line = raw.trim();
         if (!line) {
           closeLists();
+          return;
+        }
+
+        const imageHtml = renderMarkdownImage(line);
+        if (imageHtml) {
+          closeLists();
+          html.push(imageHtml);
           return;
         }
 
@@ -994,7 +1214,50 @@
       let streamDone = false;
       let cardRendered = false;
 
+      resetTraceState();
+
       await streamChatWithFallback(prompt, sessionId, (evt) => {
+        if (evt.type === "thought") {
+          traceState.thoughtText += String(evt.content || "");
+          updateTraceSummary();
+          if (showTraceDetails) {
+            renderTracePanel();
+          }
+          return;
+        }
+
+        if (evt.type === "tool") {
+          const content = evt.content || {};
+          const phase = String(content.phase || "").toLowerCase();
+          if (content.name) {
+            traceState.toolNames.add(String(content.name));
+          }
+          if (phase === "end") {
+            traceState.toolCompleted += 1;
+          }
+
+          traceState.toolEvents.push({ content, meta: evt.meta || {} });
+          updateTraceSummary();
+          if (showTraceDetails) {
+            renderTracePanel();
+          }
+          return;
+        }
+
+        if (evt.type === "message") {
+          const text = String(evt.content || "");
+          const parsedCard = tryParseCardFromText(text);
+
+          if (parsedCard) {
+            addCard(parsedCard);
+            cardRendered = true;
+            return;
+          }
+
+          addRichTextBubble(text);
+          return;
+        }
+
         if (evt.type === "token") {
           if (!streamBubble) {
             streamBubble = createStreamingAssistantBubble();
@@ -1022,7 +1285,7 @@
         }
 
         if (evt.type === "error") {
-          throw new Error(String(evt.data || "Streaming error"));
+          throw new Error(String(evt.content || evt.data || "Streaming error"));
         }
       });
 
@@ -1081,6 +1344,10 @@
       }
     });
 
+    traceToggleBtnEl.addEventListener("click", () => {
+      setTraceVisibility(!showTraceDetails);
+    });
+
     sessionIdEl.addEventListener("change", async () => {
       await selectSession(sessionIdEl.value, true);
     });
@@ -1128,6 +1395,8 @@
     });
 
     addTextBubble("Welcome. Ask normal questions for text replies, or ask for an itinerary to get a travel card.", "agent");
+    setTraceVisibility(false);
+    updateTraceSummary();
     selectSession(activeSessionId, false);
     autoResizePrompt();
     setStatus("Ready");
