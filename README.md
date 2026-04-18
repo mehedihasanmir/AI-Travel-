@@ -249,6 +249,18 @@ Prompt examples:
 - Agent graph and tool binding: `app/agents/agent_core.py`
 - External tools: `app/tools/travel_tools.py`
 
+## Recent Backend AI Updates
+
+- Migrated chat streaming to LangGraph `astream_events(version="v2")`.
+- Added production-safe SSE serialization for complex LangChain/LangGraph objects.
+- Implemented per-event fault isolation so one bad event does not terminate the full stream.
+- Added tool-level trace metadata:
+  - execution phase
+  - reasoning
+  - source attribution
+  - summarized output
+- Improved session-aware state continuity using `thread_id = session_id`.
+
 ## Troubleshooting
 
 ### `ModuleNotFoundError: No module named 'app'`
@@ -299,7 +311,31 @@ pip install -r requirements.txt
 - Add automated tests and CI pipeline for better code quality and release confidence.
 - Containerize deployment with Docker and add production-ready monitoring/logging.
 
+## Security Notes
+
+- Never commit real credentials to source control.
+- Keep `.env` values private and rotate keys immediately if exposed.
+- Use least-privilege API keys and provider-side usage limits.
+
 ## Connect with Me
 
 - GitHub: [mehedihasanmir](https://github.com/mehedihasanmir)
 - LinkedIn: [LinkedIn](https://www.linkedin.com/in/mehedi-hasan-mir/)
+
+## Streaming Event Contract
+
+`POST /chat/stream` returns Server-Sent Events (SSE) as JSON payloads.
+
+Event schema:
+
+```json
+{
+  "type": "thought | tool | message | done | error",
+  "content": "string | object",
+  "meta": {
+    "session_id": "session-123",
+    "event": "on_tool_start",
+    "run_id": "..."
+  }
+}
+```
