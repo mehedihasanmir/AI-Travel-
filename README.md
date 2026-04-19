@@ -187,7 +187,7 @@ After startup:
 
 Video walkthrough:
 
-- [Watch Demo Video (Google Drive)](https://drive.google.com/file/d/12fH3g2mtb-uuYG3qATlpTMKOOporgojd/view?usp=sharing)
+- [Watch Demo Video (Google Drive)](https://www.linkedin.com/posts/mehedi-hasan-mir_python-fastapi-langchain-activity-7451290311663763456-iq0X?utm_source=share&utm_medium=member_desktop&rcm=ACoAADhYWuoBt7fByOh9HlLqe5zr8CEeBSWdthM)
 
 Demo screenshots:
 
@@ -321,21 +321,3 @@ pip install -r requirements.txt
 
 - GitHub: [mehedihasanmir](https://github.com/mehedihasanmir)
 - LinkedIn: [LinkedIn](https://www.linkedin.com/in/mehedi-hasan-mir/)
-
-## Streaming Event Contract
-
-`POST /chat/stream` returns Server-Sent Events (SSE) as JSON payloads.
-
-Event schema:
-
-```json
-{
-  "type": "thought | tool | message | done | error",
-  "content": "string | object",
-  "meta": {
-    "session_id": "session-123",
-    "event": "on_tool_start",
-    "run_id": "..."
-  }
-}
-```
