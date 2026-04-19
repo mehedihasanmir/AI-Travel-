@@ -187,7 +187,7 @@ After startup:
 
 Video walkthrough:
 
-- [Watch Demo Video (Google Drive)](https://www.linkedin.com/posts/mehedi-hasan-mir_python-fastapi-langchain-activity-7451290311663763456-iq0X?utm_source=share&utm_medium=member_desktop&rcm=ACoAADhYWuoBt7fByOh9HlLqe5zr8CEeBSWdthM)
+- [Watch Demo Video](https://www.linkedin.com/posts/mehedi-hasan-mir_python-fastapi-langchain-activity-7451290311663763456-iq0X?utm_source=share&utm_medium=member_desktop&rcm=ACoAADhYWuoBt7fByOh9HlLqe5zr8CEeBSWdthM)
 
 Demo screenshots:
 
